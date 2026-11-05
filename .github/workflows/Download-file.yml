@@ -1,0 +1,56 @@
+name: Download File as Artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL файла для скачивания'
+        required: true
+        type: string
+      filename:
+        description: 'Имя файла (необязательно, если не указать — возьмётся из URL)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download file
+        id: download
+        run: |
+          URL="${{ inputs.url }}"
+          
+          # Определяем имя файла
+          if [ -n "${{ inputs.filename }}" ]; then
+            FILENAME="${{ inputs.filename }}"
+          else
+            FILENAME=$(basename "$URL" | cut -d'?' -f1)
+            # Если имя пустое — ставим дефолтное
+            if [ -z "$FILENAME" ] || [ "$FILENAME" = "/" ]; then
+              FILENAME="downloaded-file"
+            fi
+          fi
+          
+          echo "Скачиваю: $URL"
+          echo "Сохраняю как: $FILENAME"
+          
+          # Скачиваем файл
+          curl -L --fail --retry 3 --retry-delay 2 -o "$FILENAME" "$URL"
+          
+          # Проверяем, что файл скачался
+          if [ ! -f "$FILENAME" ]; then
+            echo "Ошибка: файл не скачался"
+            exit 1
+          fi
+          
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+          ls -lh "$FILENAME"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: downloaded-file
+          path: ${{ steps.download.outputs.filename }}
+          retention-days: 7   # сколько дней хранить artifact (можно поменять)

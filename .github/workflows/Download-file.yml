@@ -20,7 +20,7 @@ jobs:
       - name: Download file
         id: download
         run: |
-          URL="${{ inputs.url }}"
+          URL="https://code.visualstudio.com/thank-you?dv=win&build=stable"
           echo "ссылка: $URL"
           # Определяем имя файла
           if [ -n "${{ inputs.filename }}" ]; then

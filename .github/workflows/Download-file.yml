@@ -21,7 +21,7 @@ jobs:
         id: download
         run: |
           URL="${{ inputs.url }}"
-          
+          echo "ссылка: $URL"
           # Определяем имя файла
           if [ -n "${{ inputs.filename }}" ]; then
             FILENAME="${{ inputs.filename }}"

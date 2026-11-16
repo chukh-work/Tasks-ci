@@ -1,0 +1,41 @@
+{
+  "moodle_4.2": [
+    { "component": "block_ranking", "dest": "blocs/ranking", "plugin_id": 1194, "version_id": 5896, "want_version": "build for 4.2", "note": "id from URL /plugins/1194/versions/5896/download - verify this build is the 4.2 one" },
+    { "component": "block_xp", "dest": "blocs/xp", "plugin_id": null, "version_id": null, "want_version": "v3.14.0 (supported Moodle 4.2)" },
+    { "component": "block_badgeawarder", "dest": "blocs/badgeawarder", "plugin_id": null, "version_id": null, "want_version": "older than 1.405.01 (4.5 build)" },
+    { "component": "block_playerhud", "dest": "blocs/playerhud", "plugin_id": null, "version_id": null, "want_version": "older than v1.11.0 (4.5 build)" },
+    { "component": "availability_playerhud", "dest": "availability/playerhud", "plugin_id": null, "version_id": null, "want_version": "older than v1.6.0 (4.5 build)" },
+    { "component": "mod_questionnaire", "dest": "mod/questionnaire", "plugin_id": null, "version_id": null, "want_version": "4.1.1 Build 2024082900 = 4.3/4.4; for 4.2 take older" },
+    { "component": "quiz_answersheets", "dest": "mod/quiz/report/answersheets", "plugin_id": null, "version_id": null, "want_version": "v1.3 (worked with Moodle 4.0)" },
+    { "component": "question_combined", "dest": "question/combined", "plugin_id": null, "version_id": null, "want_version": "2.2 (Moodle 4.0/3.11)" },
+    { "component": "report_overviewstats", "dest": "report/overviewstats", "plugin_id": null, "version_id": null, "want_version": "v1.6.0 or v1.6.1 (Moodle 4.0+)" },
+    { "component": "question_gapfill", "dest": "question/gapfill", "plugin_id": null, "version_id": null, "want_version": "<= 2.136 (2022, Moodle 4.0-4.3 era)" },
+    { "component": "question_matrix", "dest": "question/matrix", "plugin_id": null, "version_id": null, "want_version": "older than 3.9 (4.5-5.0 build)" },
+    { "component": "report_lpmonitoring", "dest": "report/lpmonitoring", "plugin_id": null, "version_id": null, "want_version": "older than 1.7.2 (~4.5 build)" },
+    { "component": "report_myfeedback", "dest": "report/myfeedback", "plugin_id": null, "version_id": null, "want_version": "2.16 (tested 3.11-4.x)" }
+  ],
+  "moodle_4.3": [
+    { "component": "block_xp", "dest": "blocs/xp", "plugin_id": null, "version_id": null, "want_version": "build for 4.3 (v3.14.0+ era)" },
+    { "component": "block_badgeawarder", "dest": "blocs/badgeawarder", "plugin_id": null, "version_id": null, "want_version": "older than 1.405.01 (4.5 build)" },
+    { "component": "block_playerhud", "dest": "blocs/playerhud", "plugin_id": null, "version_id": null, "want_version": "older than v1.11.0 (4.5 build)" },
+    { "component": "availability_playerhud", "dest": "availability/playerhud", "plugin_id": null, "version_id": null, "want_version": "older than v1.6.0 (4.5 build)" },
+    { "component": "mod_questionnaire", "dest": "mod/questionnaire", "plugin_id": null, "version_id": null, "want_version": "4.1.1 Build 2024082900 (4.3/4.4)" },
+    { "component": "quiz_answersheets", "dest": "mod/quiz/report/answersheets", "plugin_id": null, "version_id": null, "want_version": "v1.3 (worked with Moodle 4.0)" },
+    { "component": "question_combined", "dest": "question/combined", "plugin_id": null, "version_id": null, "want_version": "2.2 (Moodle 4.0/3.11)" },
+    { "component": "report_overviewstats", "dest": "report/overviewstats", "plugin_id": null, "version_id": null, "want_version": "v1.6.0 (Support for moodle 4.3)" },
+    { "component": "question_gapfill", "dest": "question/gapfill", "plugin_id": null, "version_id": null, "want_version": "<= 2.136 (2022, Moodle 4.0-4.3 era)" },
+    { "component": "question_matrix", "dest": "question/matrix", "plugin_id": null, "version_id": null, "want_version": "older than 3.9 (4.5-5.0 build)" },
+    { "component": "report_lpmonitoring", "dest": "report/lpmonitoring", "plugin_id": null, "version_id": null, "want_version": "older than 1.7.2 (~4.5 build)" },
+    { "component": "report_myfeedback", "dest": "report/myfeedback", "plugin_id": null, "version_id": null, "want_version": "2.16 (tested 3.11-4.x)" }
+  ],
+  "moodle_4.4": [
+    { "component": "question_gapfill", "dest": "question/gapfill", "plugin_id": null, "version_id": null, "want_version": "2.139 (confirmed for Moodle 4.4)" },
+    { "component": "question_matrix", "dest": "question/matrix", "plugin_id": null, "version_id": null, "want_version": "older than 3.9 (4.5-5.0 build)" },
+    { "component": "report_lpmonitoring", "dest": "report/lpmonitoring", "plugin_id": null, "version_id": null, "want_version": "older than 1.7.2 (~4.5 build)" },
+    { "component": "report_myfeedback", "dest": "report/myfeedback", "plugin_id": null, "version_id": null, "want_version": "older than 4.5 build (2.16 tested 3.11-4.x)" },
+    { "component": "block_xp", "dest": "blocs/xp", "plugin_id": null, "version_id": null, "want_version": "build for 4.4 (before 'minimum raised to 4.5')" },
+    { "component": "block_badgeawarder", "dest": "blocs/badgeawarder", "plugin_id": null, "version_id": null, "want_version": "older than 1.405.01 (4.5 build)" },
+    { "component": "block_playerhud", "dest": "blocs/playerhud", "plugin_id": null, "version_id": null, "want_version": "older than v1.11.0 (4.5 build)" },
+    { "component": "availability_playerhud", "dest": "availability/playerhud", "plugin_id": null, "version_id": null, "want_version": "older than v1.6.0 (4.5 build)" }
+  ]
+}

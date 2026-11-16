@@ -1,0 +1,40 @@
+name: Download missing plugins
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.m.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          d = json.load(open('marketplace/manifest.json'))
+          print('versions=' + json.dumps(list(d.keys())))
+          PY
+  download:
+    needs: matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        moodle: ${{ fromJson(needs.matrix.outputs.versions) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch plugins
+        env:
+          MOODLE_MARKETPLACE_COOKIE: ${{ secrets.MOODLE_MARKETPLACE_COOKIE }}
+        run: bash marketplace/download-missing.sh "${{ matrix.moodle }}"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: missing_${{ matrix.moodle }}
+          path: zips/missing_${{ matrix.moodle }}.zip
+          if-no-files-found: error

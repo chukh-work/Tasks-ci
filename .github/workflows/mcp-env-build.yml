@@ -24,9 +24,64 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: ./.github/actions/mcp-env-build
+      - uses: actions/checkout@v4
+
+      - name: Prepare
+        id: prepare
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = Join-Path $env:GITHUB_WORKSPACE "mcp-env"
+          if (Test-Path $root) { Remove-Item $root -Recurse -Force }
+
+          $slug = ("${{ inputs.package }}" -split "[=<>~!@;,\s\[\]]" | Select-Object -First 1) -replace "[^a-zA-Z0-9._-]", "-"
+
+          $name = "${{ inputs.artifact-name }}"
+          if ([string]::IsNullOrWhiteSpace($name)) { $name = "mcp-env-$slug" }
+
+          $ver = "${{ inputs.python-version }}"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "env_root=$root"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "python_exe=$(Join-Path $root 'python.exe')"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "scripts_dir=$(Join-Path $root 'Scripts')"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "package_slug=$slug"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "artifact_name=$name"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "installer_url=https://www.python.org/ftp/python/$ver/python-$ver-amd64.exe"
+
+      - name: Download and install portable Python
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $installer = Join-Path $env:RUNNER_TEMP "python-setup.exe"
+          Invoke-WebRequest -Uri "${{ steps.prepare.outputs.installer_url }}" -OutFile $installer -UseBasicParsing
+          & $installer /quiet InstallAllUsers=0 TargetDir="${{ steps.prepare.outputs.env_root }}" Include_pip=1 Include_test=0 Include_doc=0 Include_launcher=0 Include_tcltk=0 Shortcuts=0 AssociateLaunch=0 AssociatePy=0 PrependPath=0
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { throw "Python installer failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path "${{ steps.prepare.outputs.python_exe }}")) { throw "python.exe не найден после установки" }
+
+      - name: Install
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $py = "${{ steps.prepare.outputs.python_exe }}"
+          & $py -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { throw "Не удалось обновить pip" }
+          & $py -m pip install "${{ inputs.package }}"
+          if ($LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой" }
+
+      - name: Verify
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $cmd = "${{ inputs.verify-command }}"
+          if ([string]::IsNullOrWhiteSpace($cmd)) {
+            $cmd = "${{ steps.prepare.outputs.package_slug }} --help"
+          }
+          $env:PATH = "${{ steps.prepare.outputs.scripts_dir }};$env:PATH"
+          Invoke-Expression $cmd
+          if ($LASTEXITCODE -ne 0) { throw "Проверка не пройдена: $cmd" }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          package: ${{ inputs.package }}
-          verify-command: ${{ inputs.verify-command }}
-          artifact-name: ${{ inputs.artifact-name }}
-          python-version: ${{ inputs.python-version }}
+          name: ${{ steps.prepare.outputs.artifact_name }}
+          path: "mcp-env"
+          if-no-files-found: error

@@ -45,17 +45,31 @@ jobs:
           Add-Content -Path $env:GITHUB_OUTPUT -Value "scripts_dir=$(Join-Path $root 'Scripts')"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "package_slug=$slug"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "artifact_name=$name"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "installer_url=https://www.python.org/ftp/python/$ver/python-$ver-amd64.exe"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "zip_url=https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
 
-      - name: Download and install portable Python
+      - name: Download and extract portable Python
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $installer = Join-Path $env:RUNNER_TEMP "python-setup.exe"
-          Invoke-WebRequest -Uri "${{ steps.prepare.outputs.installer_url }}" -OutFile $installer -UseBasicParsing
-          & $installer /quiet InstallAllUsers=0 TargetDir="${{ steps.prepare.outputs.env_root }}" Include_pip=1 Include_test=0 Include_doc=0 Include_launcher=0 Include_tcltk=0 Shortcuts=0 AssociateLaunch=0 AssociatePy=0 PrependPath=0
-          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { throw "Python installer failed with exit code $LASTEXITCODE" }
-          if (-not (Test-Path "${{ steps.prepare.outputs.python_exe }}")) { throw "python.exe не найден после установки" }
+          $zip = Join-Path $env:RUNNER_TEMP "python-embed.zip"
+          Invoke-WebRequest -Uri "${{ steps.prepare.outputs.zip_url }}" -OutFile $zip -UseBasicParsing
+          if (-not (Test-Path $zip)) { throw "Не удалось скачать zip с Python" }
+          Expand-Archive -Path $zip -DestinationPath "${{ steps.prepare.outputs.env_root }}" -Force
+          $pth = Get-ChildItem -Path "${{ steps.prepare.outputs.env_root }}" -Filter "python*._pth" -ErrorAction Stop | Select-Object -First 1
+          (Get-Content $pth.FullName) -replace "^#import site", "import site" | Set-Content -Path $pth.FullName
+          if (-not (Test-Path "${{ steps.prepare.outputs.python_exe }}")) { throw "python.exe не найден после распаковки" }
+
+      - name: Bootstrap pip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $py = "${{ steps.prepare.outputs.python_exe }}"
+          $getpip = Join-Path $env:RUNNER_TEMP "get-pip.py"
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getpip -UseBasicParsing
+          & $py $getpip --no-warn-script-location
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "get-pip.py завершился с ошибкой (exit $LASTEXITCODE)" }
+          & $py -m pip --version
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "pip --version завершился с ошибкой" }
 
       - name: Install
         shell: pwsh
@@ -63,21 +77,28 @@ jobs:
           $ErrorActionPreference = "Stop"
           $py = "${{ steps.prepare.outputs.python_exe }}"
           & $py -m pip install --upgrade pip
-          if ($LASTEXITCODE -ne 0) { throw "Не удалось обновить pip" }
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "Не удалось обновить pip (exit $LASTEXITCODE)" }
           & $py -m pip install "${{ inputs.package }}"
-          if ($LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой" }
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой (exit $LASTEXITCODE)" }
 
       - name: Verify
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          $scripts = "${{ steps.prepare.outputs.scripts_dir }}"
+          $env:PATH = "$scripts;$env:PATH"
           $cmd = "${{ inputs.verify-command }}"
           if ([string]::IsNullOrWhiteSpace($cmd)) {
-            $cmd = "${{ steps.prepare.outputs.package_slug }} --help"
+            $exe = Join-Path $scripts "${{ steps.prepare.outputs.package_slug }}.exe"
+            if (-not (Test-Path $exe)) {
+              $found = Get-ChildItem -Path "${{ steps.prepare.outputs.env_root }}" -Recurse -Filter "*${{ steps.prepare.outputs.package_slug }}*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+              if (-not $found) { throw "Не найден exe-скрипт для пакета '${{ inputs.package }}' в окружении" }
+              $exe = $found.FullName
+            }
+            $cmd = "$exe --help"
           }
-          $env:PATH = "${{ steps.prepare.outputs.scripts_dir }};$env:PATH"
           Invoke-Expression $cmd
-          if ($LASTEXITCODE -ne 0) { throw "Проверка не пройдена: $cmd" }
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "Проверка не пройдена: $cmd (exit $LASTEXITCODE)" }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -71,13 +71,19 @@ jobs:
           & $py -m pip --version
           if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "pip --version завершился с ошибкой" }
 
+      - name: Upgrade pip, setuptools, wheel
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $py = "${{ steps.prepare.outputs.python_exe }}"
+          & $py -m pip install --upgrade pip setuptools wheel
+          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "Не удалось обновить pip/setuptools/wheel (exit $LASTEXITCODE)" }
+
       - name: Install
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           $py = "${{ steps.prepare.outputs.python_exe }}"
-          & $py -m pip install --upgrade pip
-          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "Не удалось обновить pip (exit $LASTEXITCODE)" }
           & $py -m pip install "${{ inputs.package }}"
           if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой (exit $LASTEXITCODE)" }
 

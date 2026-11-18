@@ -1,5 +1,5 @@
 name: "MCP env builder"
-description: "Устанавливает pip-пакет в портативный mcp-env, проверяет его и отдаёт папку артефактом"
+description: "Скачивает портативный Python на раннер, устанавливает в него pip-пакет, проверяет и отдаёт папку артефактом"
 
 inputs:
   package:
@@ -9,8 +9,12 @@ inputs:
     description: "Команда проверки после установки (по умолчанию <package> --help)"
     required: false
     default: ""
+  python-version:
+    description: "Версия Python для портативного окружения"
+    required: false
+    default: "3.12.7"
   env-folder:
-    description: "Папка портативного окружения в корне репозитория"
+    description: "Имя папки окружения (создаётся на раннере, отдаётся артефактом)"
     required: false
     default: "mcp-env"
   artifact-name:
@@ -26,38 +30,37 @@ runs:
       shell: pwsh
       run: |
         $ErrorActionPreference = "Stop"
-        $envFolder = "${{ inputs.env-folder }}"
-        if (-not (Test-Path $envFolder)) { throw "Папка '$envFolder' не найдена в корне репозитория" }
-
-        $py = Get-ChildItem -Path $envFolder -Filter python.exe -Depth 1 -ErrorAction SilentlyContinue |
-              Sort-Object FullName | Select-Object -First 1
-        if (-not $py) { throw "python.exe не найден в '$envFolder'" }
-        $root = $py.Directory.FullName
-
-        $scripts = Join-Path $root "Scripts"
-        if (-not (Test-Path $scripts)) { $scripts = $root }
+        $root = Join-Path $env:GITHUB_WORKSPACE "${{ inputs.env-folder }}"
+        if (Test-Path $root) { Remove-Item $root -Recurse -Force }
 
         $slug = ("${{ inputs.package }}" -split "[=<>~!@;,\s\[\]]" | Select-Object -First 1) -replace "[^a-zA-Z0-9._-]", "-"
 
         $name = "${{ inputs.artifact-name }}"
         if ([string]::IsNullOrWhiteSpace($name)) { $name = "mcp-env-$slug" }
 
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "python_exe=$($py.FullName)"
+        $ver = "${{ inputs.python-version }}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "env_root=$root"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "scripts_dir=$scripts"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "python_exe=$(Join-Path $root 'python.exe')"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "scripts_dir=$(Join-Path $root 'Scripts')"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "package_slug=$slug"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "artifact_name=$name"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "installer_url=https://www.python.org/ftp/python/$ver/python-$ver-amd64.exe"
+
+    - name: Download and install portable Python
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $installer = Join-Path $env:RUNNER_TEMP "python-setup.exe"
+        Invoke-WebRequest -Uri "${{ steps.prepare.outputs.installer_url }}" -OutFile $installer -UseBasicParsing
+        & $installer /quiet InstallAllUsers=0 TargetDir="${{ steps.prepare.outputs.env_root }}" Include_pip=1 Include_test=0 Include_doc=0 Include_launcher=0 Include_tcltk=0 Shortcuts=0 AssociateLaunch=0 AssociatePy=0 PrependPath=0
+        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { throw "Python installer failed with exit code $LASTEXITCODE" }
+        if (-not (Test-Path "${{ steps.prepare.outputs.python_exe }}")) { throw "python.exe не найден после установки" }
 
     - name: Install
       shell: pwsh
       run: |
         $ErrorActionPreference = "Stop"
         $py = "${{ steps.prepare.outputs.python_exe }}"
-        & $py -m pip --version
-        if ($LASTEXITCODE -ne 0) {
-          & $py -m ensurepip --upgrade
-          if ($LASTEXITCODE -ne 0) { throw "pip отсутствует в окружении, ensurepip не помог" }
-        }
         & $py -m pip install --upgrade pip
         if ($LASTEXITCODE -ne 0) { throw "Не удалось обновить pip" }
         & $py -m pip install "${{ inputs.package }}"

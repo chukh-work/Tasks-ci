@@ -1,0 +1,29 @@
+name: "mcp-env artifact"
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "pip-пакет для установки"
+        required: true
+        default: "mcp-ssh-session"
+      verify-command:
+        description: "Команда проверки (по умолчанию <package> --help)"
+        required: false
+        default: ""
+      artifact-name:
+        description: "Имя артефакта (по умолчанию mcp-env-<package>)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/mcp-env-build
+        with:
+          package: ${{ inputs.package }}
+          verify-command: ${{ inputs.verify-command }}
+          artifact-name: ${{ inputs.artifact-name }}

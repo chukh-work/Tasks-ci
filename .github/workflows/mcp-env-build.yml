@@ -15,15 +15,18 @@ on:
         description: "Имя артефакта (по умолчанию mcp-env-<package>)"
         required: false
         default: ""
+      python-version:
+        description: "Версия Python (3.12.7)"
+        required: false
+        default: "3.12.7"
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-
       - uses: ./.github/actions/mcp-env-build
         with:
           package: ${{ inputs.package }}
           verify-command: ${{ inputs.verify-command }}
           artifact-name: ${{ inputs.artifact-name }}
+          python-version: ${{ inputs.python-version }}

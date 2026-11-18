@@ -1,0 +1,83 @@
+name: "MCP env builder"
+description: "Устанавливает pip-пакет в портативный mcp-env, проверяет его и отдаёт папку артефактом"
+
+inputs:
+  package:
+    description: "pip-пакет (например, mcp-ssh-session или mcp-ssh-session==1.2.3)"
+    required: true
+  verify-command:
+    description: "Команда проверки после установки (по умолчанию <package> --help)"
+    required: false
+    default: ""
+  env-folder:
+    description: "Папка портативного окружения в корне репозитория"
+    required: false
+    default: "mcp-env"
+  artifact-name:
+    description: "Имя артефакта (по умолчанию mcp-env-<package>)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare
+      id: prepare
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $envFolder = "${{ inputs.env-folder }}"
+        if (-not (Test-Path $envFolder)) { throw "Папка '$envFolder' не найдена в корне репозитория" }
+
+        $py = Get-ChildItem -Path $envFolder -Filter python.exe -Depth 1 -ErrorAction SilentlyContinue |
+              Sort-Object FullName | Select-Object -First 1
+        if (-not $py) { throw "python.exe не найден в '$envFolder'" }
+        $root = $py.Directory.FullName
+
+        $scripts = Join-Path $root "Scripts"
+        if (-not (Test-Path $scripts)) { $scripts = $root }
+
+        $slug = ("${{ inputs.package }}" -split "[=<>~!@;,\s\[\]]" | Select-Object -First 1) -replace "[^a-zA-Z0-9._-]", "-"
+
+        $name = "${{ inputs.artifact-name }}"
+        if ([string]::IsNullOrWhiteSpace($name)) { $name = "mcp-env-$slug" }
+
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "python_exe=$($py.FullName)"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "env_root=$root"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "scripts_dir=$scripts"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "package_slug=$slug"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "artifact_name=$name"
+
+    - name: Install
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $py = "${{ steps.prepare.outputs.python_exe }}"
+        & $py -m pip --version
+        if ($LASTEXITCODE -ne 0) {
+          & $py -m ensurepip --upgrade
+          if ($LASTEXITCODE -ne 0) { throw "pip отсутствует в окружении, ensurepip не помог" }
+        }
+        & $py -m pip install --upgrade pip
+        if ($LASTEXITCODE -ne 0) { throw "Не удалось обновить pip" }
+        & $py -m pip install "${{ inputs.package }}"
+        if ($LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой" }
+
+    - name: Verify
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        $cmd = "${{ inputs.verify-command }}"
+        if ([string]::IsNullOrWhiteSpace($cmd)) {
+          $cmd = "${{ steps.prepare.outputs.package_slug }} --help"
+        }
+        $env:PATH = "${{ steps.prepare.outputs.scripts_dir }};$env:PATH"
+        Invoke-Expression $cmd
+        if ($LASTEXITCODE -ne 0) { throw "Проверка не пройдена: $cmd" }
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.prepare.outputs.artifact_name }}
+        path: ${{ inputs.env-folder }}
+        if-no-files-found: error

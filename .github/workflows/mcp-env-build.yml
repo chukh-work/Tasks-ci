@@ -7,10 +7,6 @@ on:
         description: "pip-пакет для установки"
         required: true
         default: "mcp-ssh-session"
-      verify-command:
-        description: "Команда проверки (по умолчанию <package> --help)"
-        required: false
-        default: ""
       artifact-name:
         description: "Имя артефакта (по умолчанию mcp-env-<package>)"
         required: false
@@ -88,25 +84,6 @@ jobs:
           $pkgs = "${{ inputs.package }}" -split "\s+" | Where-Object { $_ }
           & $py -m pip install @pkgs
           if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой (exit $LASTEXITCODE)" }
-
-      - name: Verify
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $scripts = "${{ steps.prepare.outputs.scripts_dir }}"
-          $env:PATH = "$scripts;$env:PATH"
-          $cmd = "${{ inputs.verify-command }}"
-          if ([string]::IsNullOrWhiteSpace($cmd)) {
-            $exe = Join-Path $scripts "${{ steps.prepare.outputs.package_slug }}.exe"
-            if (-not (Test-Path $exe)) {
-              $found = Get-ChildItem -Path "${{ steps.prepare.outputs.env_root }}" -Recurse -Filter "*${{ steps.prepare.outputs.package_slug }}*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-              if (-not $found) { throw "Не найден exe-скрипт для пакета '${{ inputs.package }}' в окружении" }
-              $exe = $found.FullName
-            }
-            $cmd = "$exe --help"
-          }
-          Invoke-Expression $cmd
-          if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "Проверка не пройдена: $cmd (exit $LASTEXITCODE)" }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -34,7 +34,8 @@ jobs:
           $root = Join-Path $env:GITHUB_WORKSPACE "mcp-env"
           if (Test-Path $root) { Remove-Item $root -Recurse -Force }
 
-          $slug = ("${{ inputs.package }}" -split "[=<>~!@;,\s\[\]]" | Select-Object -First 1) -replace "[^a-zA-Z0-9._-]", "-"
+          $parts = ("${{ inputs.package }}" -split "\s+" | Where-Object { $_ }) | ForEach-Object { ($_ -split "[=<>~!@;,\[\]]" | Select-Object -First 1) -replace "[^a-zA-Z0-9._-]", "-" }
+          $slug = $parts -join "-"
 
           $name = "${{ inputs.artifact-name }}"
           if ([string]::IsNullOrWhiteSpace($name)) { $name = "mcp-env-$slug" }
@@ -84,7 +85,8 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $py = "${{ steps.prepare.outputs.python_exe }}"
-          & $py -m pip install "${{ inputs.package }}"
+          $pkgs = "${{ inputs.package }}" -split "\s+" | Where-Object { $_ }
+          & $py -m pip install @pkgs
           if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) { throw "pip install '${{ inputs.package }}' завершилась с ошибкой (exit $LASTEXITCODE)" }
 
       - name: Verify
